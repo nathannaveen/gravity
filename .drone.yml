@@ -6,37 +6,14 @@ name: docs-pr
 trigger:
   event:
   - pull_request
+  - push
 
 steps:
   - name: wait for docker
     image: docker
     commands:
-      - timeout 15s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
+      - timeout 60s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
       - docker version
-    volumes:
-      - name: dockersock
-        path: /var/run
-  - name: build buildbox
-    image: docker:git
-    commands:
-      - apk add --no-cache make
-      - make -C docs bbox
-    volumes:
-      - name: dockersock
-        path: /var/run
-  - name: build
-    image: docker:git
-    commands:
-      - apk add --no-cache make
-      - make -C docs docs
-    volumes:
-      - name: dockersock
-        path: /var/run
-  - name: lint
-    image: docker:git
-    commands:
-      - apk add --no-cache make
-      - make -C docs lint
     volumes:
       - name: dockersock
         path: /var/run
