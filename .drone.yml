@@ -1,6 +1,64 @@
 ---
 kind: pipeline
 type: kubernetes
+name: pr
+
+trigger:
+  event:
+  - pull_request
+  - push
+  branch:
+  - walt/*
+
+steps:
+  - name: wait for docker
+    image: docker
+    commands:
+      - timeout 15s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
+      - docker version
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: build buildbox
+    image: docker:git
+    commands:
+      - apk add --no-cache make
+      - make -C build.assets buildbox
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: build binaries
+    image: docker:git
+    commands:
+      - apk add --no-cache make
+      - make -C build.assets build
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: build gravity app
+    image: docker:git
+    commands:
+      - apk add --no-cache make
+      - make -C build.assets telekube-app
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+services:
+  - name: run docker daemon
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+volumes:
+  - name: dockersock
+    temp: {}
+
+---
+kind: pipeline
+type: kubernetes
 name: docs-pr
 
 trigger:
@@ -54,6 +112,6 @@ volumes:
     temp: {}
 ---
 kind: signature
-hmac: ecf6ccc933d41d1db58d885ae7f9cae6ef3d3139444333586f6c0ba63002f9de
+hmac: 7e47449770f371addc7af1833ee52bd3f626a423d685b90b729e502aa95095fa
 
 ...
